@@ -28,12 +28,14 @@ services:
       # public internet on this URL, so admin/admin is not an option.
       - key: KC_BOOTSTRAP_ADMIN_PASSWORD
         sync: false
-      # Set this to the service URL (https://<name>.onrender.com) once Render has
-      # assigned it, to pin the token issuer. Left unset, Keycloak derives the issuer from
-      # the Host header, which Render keeps constant anyway — but an explicit value is
-      # what makes a later custom domain a deliberate change rather than a surprise.
-      - key: KC_HOSTNAME
-        sync: false
+      # KC_HOSTNAME is deliberately absent. Keycloak then derives the issuer from the Host
+      # header, which the platform keeps constant, and the service works on first deploy.
+      #
+      # Declaring it here with sync: false does not leave it unset when you skip the
+      # prompt: the platform fills it with a generated value, Keycloak believes it, and
+      # every URL it advertises — issuer included — points at a host that does not exist.
+      # Add it by hand afterwards, set to the service URL, if you want the issuer pinned
+      # against a later custom domain.
       # Both are substituted into the realm at import time, which is why the realm file
       # can be public: the IdP is reachable from the internet, and anything that trusts
       # its tokens would otherwise trust whoever read these values out of git.
