@@ -25,13 +25,15 @@ per role, which is what an API gateway in front of those APIs enforces.
    | `KC_BOOTSTRAP_ADMIN_PASSWORD` | A real password. The admin console is on the public internet here |
    | `KC_GATEWAY_CLIENT_SECRET` | The secret of the client that requests the exchange. Whatever you choose, your client has to send the same |
    | `KC_TEST_USER_PASSWORD` | Shared by the three test users |
-   | `KC_HOSTNAME` | Leave empty for now, the URL does not exist yet |
 
 2. Wait for the first deploy. The health check points at the discovery document, so a
    deploy that goes live is also proof the realm imported.
-3. Copy the service URL and set `KC_HOSTNAME` to it (`https://<name>.onrender.com`) in
-   *Settings > Environment*, then redeploy. That pins the token issuer instead of deriving
-   it from the `Host` header of each request.
+Keycloak derives the issuer from the `Host` header, so the service is usable as it stands.
+To pin the issuer instead — worth doing before putting a custom domain in front — add
+`KC_HOSTNAME` in *Settings > Environment*, set to the service URL, and redeploy. Add it
+afterwards rather than declaring it in the blueprint: a blueprint variable whose prompt you
+skip is filled with a generated value, and Keycloak would then advertise a host that does
+not exist.
 
 Every push redeploys the service, and the realm follows with it.
 
