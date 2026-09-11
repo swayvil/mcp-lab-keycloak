@@ -1,0 +1,192 @@
+{
+  "realm": "poc-mcp",
+  "displayName": "MCP test bench - Omni Gateway",
+  "enabled": true,
+  "sslRequired": "none",
+  "accessTokenLifespan": 900,
+  "roles": {
+    "realm": [
+      {
+        "name": "flights-reader",
+        "description": "Grants the read tools of the MCP server: get_flights and get_flights_flightid."
+      },
+      {
+        "name": "flights-writer",
+        "description": "Grants the write tools: post_flights, put_flights_flightid and delete_flights_flightid."
+      },
+      {
+        "name": "booking-agent",
+        "description": "Grants the booking tools: get_bookings, get_bookings_bookingid, post_bookings and delete_bookings_bookingid. Deliberately orthogonal to the flights roles, so that holding every right on the catalogue grants none on the reservations."
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "mcp-client",
+      "name": "Test MCP client - issues T1",
+      "description": "Public client used to obtain the end-user token. The audience mapper is required for the exchange to succeed, the realm-roles mapper for the ABAC rules to have anything to decide on.",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:*",
+        "http://127.0.0.1:*"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "protocolMappers": [
+        {
+          "name": "audience-omni-gateway",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "omni-gateway",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "realm-roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "multivalued": "true",
+            "usermodel.realmRoleMapping.rolePrefix": "",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "omni-gateway",
+      "name": "Omni Gateway - requests the exchange",
+      "description": "Confidential client whose ID and secret go into both OBO policy instances, one per upstream. Its audience mappers declare flights-api and bookings-api as reachable targets; without one, that exchange fails with 'Requested audience not available'.",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "${KC_GATEWAY_CLIENT_SECRET}",
+      "clientAuthenticatorType": "client-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "attributes": {
+        "standard.token.exchange.enabled": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "audience-flights-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "flights-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "audience-bookings-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "bookings-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "flights-api",
+      "name": "Target resource - audience of T2 for the flights catalogue",
+      "description": "Exposes no flow. Only serves as the value of the exchange's audience parameter, and therefore as the aud claim of T2.",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false
+    },
+    {
+      "clientId": "bookings-api",
+      "name": "Target resource - audience of T2 for the bookings",
+      "description": "Second target, same shape as flights-api. It is what makes the two upstreams asymmetric: the token exchanged for the catalogue carries aud = flights-api and is refused by the bookings API, and the reverse also holds.",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false
+    }
+  ],
+  "users": [
+    {
+      "username": "alice",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "alice@example.ch",
+      "firstName": "Alice",
+      "lastName": "Tester",
+      "realmRoles": [
+        "flights-reader"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${KC_TEST_USER_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "bob",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "bob@example.ch",
+      "firstName": "Bob",
+      "lastName": "Tester",
+      "realmRoles": [
+        "flights-reader",
+        "flights-writer"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${KC_TEST_USER_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "carol",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "carol.weber@example.com",
+      "firstName": "Carol",
+      "lastName": "Weber",
+      "realmRoles": [
+        "flights-reader",
+        "booking-agent"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${KC_TEST_USER_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

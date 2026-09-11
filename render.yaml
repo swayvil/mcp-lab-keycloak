@@ -1,0 +1,47 @@
+# Render blueprint for this Keycloak. Create the service with
+# Dashboard > New > Blueprint, pointing at this repository.
+#
+# Nothing secret is stored here: every credential is marked sync: false, so Render asks
+# for it at creation time instead of it living in git.
+services:
+  - type: web
+    name: mcp-lab-keycloak
+    runtime: docker
+    # Left at the default: this repository holds nothing but the image and the realm it
+    # bakes in, so the build context is the root.
+    dockerfilePath: ./Dockerfile
+    # Pick the region closest to whatever validates the tokens. A JWKS fetch and a token
+    # exchange sit on the request path of every call, so the round trip is paid on each.
+    region: frankfurt
+    # free spins the service down after 15 minutes without traffic and takes about a
+    # minute to come back, which callers see as a JWKS timeout. Worth switching to
+    # starter for a live demo.
+    plan: free
+    # Render's default check only wants the port open. Pointing it at the discovery
+    # document makes a failed realm import show up as a failed deploy instead of as a
+    # service that answers 404 on everything.
+    healthCheckPath: /realms/poc-mcp/.well-known/openid-configuration
+    envVars:
+      - key: KC_BOOTSTRAP_ADMIN_USERNAME
+        value: admin
+      # Asked for at creation, never stored here. The admin console is reachable from the
+      # public internet on this URL, so admin/admin is not an option.
+      - key: KC_BOOTSTRAP_ADMIN_PASSWORD
+        sync: false
+      # Set this to the service URL (https://<name>.onrender.com) once Render has
+      # assigned it, to pin the token issuer. Left unset, Keycloak derives the issuer from
+      # the Host header, which Render keeps constant anyway — but an explicit value is
+      # what makes a later custom domain a deliberate change rather than a surprise.
+      - key: KC_HOSTNAME
+        sync: false
+      # Both are substituted into the realm at import time, which is why the realm file
+      # can be public: the IdP is reachable from the internet, and anything that trusts
+      # its tokens would otherwise trust whoever read these values out of git.
+      #
+      # The secret of the client that requests the token exchange.
+      - key: KC_GATEWAY_CLIENT_SECRET
+        sync: false
+      # Shared by the three test users. They exist to demonstrate role-based rules, but
+      # they are real credentials on a public host all the same.
+      - key: KC_TEST_USER_PASSWORD
+        sync: false
