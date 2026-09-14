@@ -22,19 +22,10 @@
 # the container to do nothing but start.
 FROM quay.io/keycloak/keycloak:26.2 AS builder
 
-# Build options, so they have to be set here and match at runtime.
-#
-# dev-mem keeps the store in memory, which is what this deployment wants anyway: the realm
-# is re-imported from the image on every boot, and nothing is meant to survive a restart.
+# A build option, so it has to be set here and match at runtime. dev-mem keeps the store
+# in memory, which is what this deployment wants anyway: the realm is re-imported from
+# the image on every boot, and nothing is meant to survive a restart.
 ENV KC_DB=dev-mem
-
-# local is the single-node cache. Prod mode otherwise defaults to the clustered one, which
-# brings up JGroups to find peers it will never have here: it instead reaches the
-# platform's own address, connects to itself, rejects the connection ("cookie read by
-# ... does not match own cookie"), and retries for as long as it is allowed to — which on
-# a 512 MB instance ends in the container being killed before a port is ever opened.
-# start-dev sets this implicitly, which is why dev mode never showed the problem.
-ENV KC_CACHE=local
 
 RUN /opt/keycloak/bin/kc.sh build
 
@@ -48,6 +39,15 @@ COPY --from=builder /opt/keycloak/ /opt/keycloak/
 # Repeated from the build stage: --optimized refuses to start if a build option differs
 # from the value the image was built with.
 ENV KC_DB=dev-mem
+
+# The single-node cache. Prod mode otherwise defaults to the clustered one, which brings
+# up JGroups to find peers it will never have here: it reaches the instance's own address
+# instead, connects to itself, rejects the connection ("cookie read by ... does not match
+# own cookie") and retries for as long as it is allowed to — which on a 512 MB instance
+# ends in the container being killed before a port is ever opened. start-dev sets this
+# implicitly, which is why the problem only appeared on the move to prod mode.
+#
+# A runtime option, unlike the two above, so the build stage has no use for it.
 ENV KC_CACHE=local
 
 # Render routes traffic to $PORT (10000 by default) and Keycloak reads KC_HTTP_PORT, so
