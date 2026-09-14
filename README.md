@@ -12,7 +12,7 @@ per role, which is what an API gateway in front of those APIs enforces.
 | File | Role |
 | --- | --- |
 | `render.yaml` | The blueprint. One free web service, health-checked on the realm's discovery document |
-| `Dockerfile` | Keycloak 26.2, `start-dev --import-realm`, listening on port 10000 behind the platform's TLS |
+| `Dockerfile` | Keycloak 26.2, built in a first stage and run with `start --optimized --import-realm`, listening on port 10000 behind the platform's TLS |
 | `keycloak-realm.json` | The realm: clients, audience mappers, roles and test users |
 
 ## Deploy
@@ -74,4 +74,5 @@ the point.
 | | |
 | --- | --- |
 | **Cold starts** | A free instance spins down after 15 minutes without traffic and takes about a minute to come back. Callers see that as a JWKS timeout, so the first request after a pause fails. Warm it up beforehand, or take the paid plan, which does not spin down. |
-| **Memory** | Keycloak idles at about 410 MB, measured in a 512 MB container — it fits, without much room. The first paid tier has the same 512 MB, so it buys availability, not headroom. |
+| **Memory** | It fits in 512 MB, but only because the image is built for the options it runs with. Keycloak otherwise augments itself on first start, and that peak got the container killed before a port was ever opened — a failed deploy whose only clue was `Out of memory (used over 512Mi)` after the line about installing custom providers. A builder stage runs that step instead, `start --optimized` skips it, and the heap is capped in absolute terms because what the platform kills for is resident memory, not heap. The first paid tier has the same 512 MB, so it buys availability, not headroom. |
+| **Boot time** | About four minutes from a push to a healthy service, most of it the platform's build and rollout rather than Keycloak, which now starts without augmenting. |
