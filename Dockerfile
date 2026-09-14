@@ -63,10 +63,14 @@ COPY keycloak-realm.json /opt/keycloak/data/import/poc-mcp-realm.json
 # and the JVM itself is what keeps the sum under the limit.
 ENV JAVA_OPTS_KC_HEAP="-Xms64m -Xmx256m"
 
-# The serial collector, because the throughput collectors size their own structures from
-# the CPU count and allocate per-thread — overhead that buys nothing for a server this
-# small, and that counts against the same 512 MB.
-ENV JAVA_OPTS_APPEND="-XX:+UseSerialGC -XX:MaxMetaspaceSize=160m"
+# Metaspace is capped for the same reason the heap is: it is resident memory the limit
+# counts, and it is not covered by -Xmx.
+#
+# No collector is selected here. The base image already enables G1 in its own JAVA_OPTS,
+# and since this variable is appended rather than substituted, naming a second one leaves
+# both enabled — the JVM then refuses to start with "Multiple garbage collectors
+# selected", which reads like a memory problem and is not one.
+ENV JAVA_OPTS_APPEND="-XX:MaxMetaspaceSize=160m"
 
 EXPOSE 10000
 
